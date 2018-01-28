@@ -31,8 +31,8 @@ int main (int argc, char* argv[]){
 		std::cout << "Matrix dimension not valid. Must be between 0 and 32000." << std::endl;
 		return 1;
 	}
-	if ( blockDim <=0 || blockDim >= prop.totalConstMem ){
-		std::cout << "Block dimension not valid. Must be between 0 and " << prop.totalConstMem << "." << std::endl;
+	if ( blockDim <=0 || blockDim >= 25000 ){
+		std::cout << "Block dimension not valid. Must be between 0 and 25000." << std::endl;
 		return 1;
 	}
 	if ( threadDim <=0 || threadDim > sqrt(prop.maxThreadsPerBlock) ){
