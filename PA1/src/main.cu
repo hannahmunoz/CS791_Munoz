@@ -43,9 +43,11 @@ int main (int argc, char* argv[]){
 	// initalize more varaibles
 	dim3 grid (blockDim, blockDim);
 	dim3 block (threadDim, threadDim);
+	int addsPerThread = (int)pow(matDim, 2)/((int)pow(blockDim, 2)* (int)pow(threadDim, 2));
+	//std::cout << addsPerThread << std::endl;
 
 	// begin timing
- 	 cudaEvent_t start, end;
+ 	cudaEvent_t start, end;
   	cudaEventCreate(&start);
   	cudaEventCreate(&end);
 
@@ -73,14 +75,21 @@ int main (int argc, char* argv[]){
 	cudaMemcpy (b, MatB, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int), cudaMemcpyHostToDevice);
 
 	//add
-	add <<<grid, block>>> (a, b, c);
+	add <<<grid, block>>> (a, b, c, addsPerThread);
 
 	// get result from GPU
-	//cudaMemcpy (c, MatC, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int), cudaMemcpyDevicetoHost );
+	cudaMemcpy (MatC, c, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int), cudaMemcpyDeviceToHost );
 
 	//end time
 	cudaEventRecord( end, 0 );
   	cudaEventSynchronize( end );
+
+	for (int i = 0; i < matDim; i++){
+		for (int j = 0; j < matDim; j++){
+			std::cout << MatC[(i*matDim)+j] << " ";
+		}
+		std::cout << std::endl;
+	}
 
  	float elapsedTime;
   	cudaEventElapsedTime( &elapsedTime, start, end );
