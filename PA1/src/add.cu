@@ -2,14 +2,10 @@
 
 #include "add.h"
 
-__global__ void add (int *a, int *b, int *c, int addsPerThread){
+__global__ void add (int *a, int *b, int *c){
 	int globalPos = getGlobalIdx();
-	for (int i = 0; i < addsPerThread; i++){
-		c[globalPos+i] = a[globalPos+i]+ b[globalPos+i];
+	c[globalPos] = a[globalPos]+ b[globalPos];
 		//printf ("%d\n", c[globalPos+i]);
-	} 
-	
-	
    	// printf("block coor (%d, %d)\nthead coor(%d, %d)\n \n", blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y);
 }
 

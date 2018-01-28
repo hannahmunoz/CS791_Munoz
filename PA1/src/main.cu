@@ -1,4 +1,6 @@
 #include <iostream>
+#include <stdio.h>
+
 #include <cmath>
 
 #include "add.h"
@@ -12,7 +14,7 @@ int main (int argc, char* argv[]){
 
 	// get inputs
 	if (argc < 4){
-		std::cout << "Not enough arguments" << std::endl; 
+		std::cout << "Not enough arguments. <<matrix dimension>> << block dimension>> << thread dimension>>" << std::endl; 
 		return 1;
 	}
 	else{
@@ -21,30 +23,46 @@ int main (int argc, char* argv[]){
 	       threadDim = atoi(argv [3]);
 	}
 
-	
+	cudaDeviceProp prop;
+ 	cudaGetDeviceProperties( &prop, 0 );
+
 	// bounds checking
-	if ( matDim <=0){
-		std::cout << "Matrix dimension not valid" << std::endl;
+	if ( matDim <=0 || matDim >= 32000){
+		std::cout << "Matrix dimension not valid. Must be between 0 and 32000." << std::endl;
 		return 1;
 	}
-	if ( blockDim <=0 ){
-		std::cout << "Block dimension not valid" << std::endl;
+	if ( blockDim <=0 || blockDim >= prop.totalConstMem ){
+		std::cout << "Block dimension not valid. Must be between 0 and " << prop.totalConstMem << "." << std::endl;
 		return 1;
 	}
-	if ( threadDim <=0 ){
-		std::cout << "Matrix dimension not valid" << std::endl;
+	if ( threadDim <=0 || threadDim > sqrt(prop.maxThreadsPerBlock) ){
+		std::cout << "Thread dimension not valid. Must be between 0 and " << sqrt(prop.maxThreadsPerBlock)  << "." << std::endl;
 		return 1;
 	}
-	if ( blockDim * threadDim < matDim){
-		std::cout << "Not enough blocks and threads for given matrix dimensions" << std::endl;
+	if ( blockDim * threadDim != matDim){
+		std::cout << "Not enough/too many blocks and threads for given matrix dimensions" << std::endl;
 		return 1;
 	}
 
 	// initalize more varaibles
 	dim3 grid (blockDim, blockDim);
 	dim3 block (threadDim, threadDim);
-	int addsPerThread = (int)pow(matDim, 2)/((int)pow(blockDim, 2)* (int)pow(threadDim, 2));
-	//std::cout << addsPerThread << std::endl;
+
+	//create arrays
+	int *MatA = new int[(int)pow(matDim, 2)];
+	int *MatB = new int[(int)pow(matDim, 2)]; 
+	int *MatC = new int[(int)pow(matDim, 2)];
+
+	for (int i=0; i < (int)pow(matDim, 2); i++) {
+ 		MatA[i] = i;
+ 		MatB[i] = i;
+ 	}
+
+	//alloc memory
+	int *a, *b, *c;
+	cudaMalloc( (void**)&a,(int)pow(matDim, 2) * sizeof(int) );
+	cudaMalloc( (void**)&b, (int)pow(matDim, 2) * sizeof(int) );
+	cudaMalloc( (void**)&c, (int)pow(matDim, 2) * sizeof(int) );
 
 	// begin timing
  	cudaEvent_t start, end;
@@ -53,43 +71,27 @@ int main (int argc, char* argv[]){
 
  	cudaEventRecord( start, 0 );
 
-
-	//create arrays
-	int *MatA = new int[(int)pow(blockDim, 2)* (int)pow(threadDim, 2)];
-	int *MatB = new int[(int)pow(blockDim, 2)* (int)pow(threadDim, 2)]; 
-	int *MatC = new int[(int)pow(blockDim, 2)* (int)pow(threadDim, 2)];
-
-	for (int i=0; i < (int)pow(blockDim, 2)* (int)pow(threadDim, 2); i++) {
- 		MatA[i] = i;
- 		MatB[i] = i;
- 	}
-
-	//alloc memory
-	int *a, *b, *c;
-	cudaMalloc( (void**)&a, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int) );
-	cudaMalloc( (void**)&b, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int) );
-	cudaMalloc( (void**)&c, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int) );
-
 	//send to GPU
-	cudaMemcpy (a, MatA, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int), cudaMemcpyHostToDevice);
-	cudaMemcpy (b, MatB, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy (a, MatA, (int)pow(matDim, 2) * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy (b, MatB, (int)pow(matDim, 2) * sizeof(int), cudaMemcpyHostToDevice);
 
 	//add
-	add <<<grid, block>>> (a, b, c, addsPerThread);
+	add <<<grid, block>>> (a, b, c);
 
 	// get result from GPU
-	cudaMemcpy (MatC, c, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int), cudaMemcpyDeviceToHost );
+	cudaMemcpy (MatC, c, (int)pow(matDim, 2) * sizeof(int), cudaMemcpyDeviceToHost );
 
 	//end time
 	cudaEventRecord( end, 0 );
   	cudaEventSynchronize( end );
 
-	for (int i = 0; i < matDim; i++){
+	//for testing output
+	/*for (int i = 0; i < matDim; i++){
 		for (int j = 0; j < matDim; j++){
 			std::cout << MatC[(i*matDim)+j] << " ";
 		}
 		std::cout << std::endl;
-	}
+	}*/
 
  	float elapsedTime;
   	cudaEventElapsedTime( &elapsedTime, start, end );
