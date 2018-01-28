@@ -1,5 +1,5 @@
 #include <iostream>
-#include<cmath>
+#include <cmath>
 
 #include "add.h"
 
@@ -35,7 +35,7 @@ int main (int argc, char* argv[]){
 		std::cout << "Matrix dimension not valid" << std::endl;
 		return 1;
 	}
-	if ( blockDim * threadDim < (int) pow(matDim,2)){
+	if ( blockDim * threadDim < matDim){
 		std::cout << "Not enough blocks and threads for given matrix dimensions" << std::endl;
 		return 1;
 	}
@@ -49,7 +49,7 @@ int main (int argc, char* argv[]){
   	cudaEventCreate(&start);
   	cudaEventCreate(&end);
 
- 	 cudaEventRecord( start, 0 );
+ 	cudaEventRecord( start, 0 );
 
 
 	//create arrays
@@ -67,6 +67,16 @@ int main (int argc, char* argv[]){
 	cudaMalloc( (void**)&a, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int) );
 	cudaMalloc( (void**)&b, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int) );
 	cudaMalloc( (void**)&c, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int) );
+
+	//send to GPU
+	cudaMemcpy (a, MatA, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy (b, MatB, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int), cudaMemcpyHostToDevice);
+
+	//add
+	add <<<grid, block>>> (a, b, c);
+
+	// get result from GPU
+	//cudaMemcpy (c, MatC, pow(blockDim, 2)* pow(threadDim, 2) * sizeof(int), cudaMemcpyDevicetoHost );
 
 	//end time
 	cudaEventRecord( end, 0 );
