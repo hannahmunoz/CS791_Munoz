@@ -2,11 +2,11 @@
 #include <stdlib.h> 
 #include <cmath>
 
-void add (int*, int*, int*, int);
+void add (float*, float*, float*, float);
 
-int main (int argc, char* argv[]){
+float main (float argc, char* argv[]){
 	//variables
-	int matDim;
+	float matDim;
 
 	// get inputs
 	if (argc < 2){
@@ -18,12 +18,12 @@ int main (int argc, char* argv[]){
 	}
 
 	//create arrays
-	int *MatA = new int[(int)pow(matDim, 2)];
-	int *MatB = new int[(int)pow(matDim, 2)]; 
-	int *MatC = new int[(int)pow(matDim, 2)];
+	float *MatA = new float[(float)pow(matDim, 2)];
+	float *MatB = new float[(float)pow(matDim, 2)]; 
+	float *MatC = new float[(float)pow(matDim, 2)];
 	
 	//load
-	for (int i=0; i < (int)pow(matDim, 2); i++) {
+	for (int i=0; i < (float)pow(matDim, 2); i++) {
  		MatA[i] = i;
  		MatB[i] = i;
  	}
@@ -36,7 +36,7 @@ int main (int argc, char* argv[]){
  	cudaEventRecord( start, 0 );
 
 	//add
-	add (MatA, MatB, MatC, (int)pow(matDim, 2));
+	add (MatA, MatB, MatC, (float)pow(matDim, 2));
 
 	//output results
 	/*for (int i = 0; i < matDim; i++){
@@ -66,7 +66,7 @@ int main (int argc, char* argv[]){
 	return 0;
 }
 
-void add (int* a, int* b, int* c, int size){
+void add (float* a, float* b, float* c, float size){
 	for (int i=0; i < size; i++) {
 		c [i] = a[i] + b[i];
  	}

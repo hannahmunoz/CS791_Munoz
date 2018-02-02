@@ -2,7 +2,7 @@
 
 #include "add.h"
 
-__global__ void add (int *a, int *b, int *c){
+__global__ void add (float *a, float *b, float *c){
 	int globalPos = getGlobalIdx();
 	c[globalPos] = a[globalPos]+ b[globalPos];
 		//printf ("%d\n", c[globalPos+i]);
