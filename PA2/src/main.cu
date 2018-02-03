@@ -73,7 +73,7 @@ int main (int argc, char* argv[]){
 	//cudaMemcpy (b, MatB, (float)pow(matDim, 2) * sizeof(float), cudaMemcpyHostToDevice);
 
 	//multiply
-	multiply <<<grid, block>>> (MatA, MatB, MatC);
+	multiply <<<grid, block>>> (MatA, MatB, MatC, matDim);
 
 	// get result from GPU
 	//cudaMemcpy (MatC, c, (float)pow(matDim, 2) * sizeof(float), cudaMemcpyDeviceToHost );

@@ -2,16 +2,19 @@
 
 #include "multiply.h"
 
-__global__ void multiply (float *a, float *b, float *c){
+__global__ void multiply (float *a, float *b, float *c, int size){
 	int globalPos = getGlobalIdx();
-	//c[globalPos] = a[globalPos]+ b[globalPos];
-		//printf ("%d\n", c[globalPos+i]);
-   printf("block coor (%d, %d)\nthead coor(%d, %d)\nglobal coor (%d)\n grid coor (%d, %d) \n\n", blockDim.x, blockDim.y, threadIdx.x, threadIdx.y, globalPos, gridDim.x, gridDim.y);
-}
+	int row = blockIdx.y*blockDim.y+threadIdx.y;
+	int col = blockIdx.x*blockDim.x+threadIdx.x;
 
-__global__ void dotProduct (int threadID, int col){
-	
-
+	//printf ("global: %d \n (%d, %d)\n\n", globalPos, row, col);
+	float temp = 0;
+	if (row < size && col < size) {    
+        	for (int i = 0; i < size; i++) {
+            		temp += a[row * size + i] * b[i * size + col];
+        	}
+    	c[row * size + col] = temp;
+	} 
 }
 
 
@@ -21,5 +24,3 @@ __device__ int getGlobalIdx(){
 	int threadId = blockId * (blockDim.x * blockDim.y) + (threadIdx.y * blockDim.x) + threadIdx.x;
 	return threadId;
 }
-
-//__device__ int getNextID(int block
