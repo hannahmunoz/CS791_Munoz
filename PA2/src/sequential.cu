@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stdlib.h> 
 #include <cmath>
-
+#include <stdio.h>
 
 int main (int argc, char* argv[]){
 	//variables
@@ -17,14 +17,14 @@ int main (int argc, char* argv[]){
 	}
 
 	//create arrays
-	int *MatA = new int[(int)pow(matDim, 2)];
-	int *MatB = new int[(int)pow(matDim, 2)]; 
-	int *MatC = new int[(int)pow(matDim, 2)];
+	float *MatA = new float[(int)pow(matDim, 2)];
+	float *MatB = new float[(int)pow(matDim, 2)]; 
+	float *MatC = new float[(int)pow(matDim, 2)];
 	
 	//load
 	for (int i=0; i < (int)pow(matDim, 2); i++) {
- 		MatA[i] = i;
- 		MatB[i] = i;
+ 		MatA[i] = (float) i;
+ 		MatB[i] = (float) i;
  	}
 
 
@@ -35,21 +35,31 @@ int main (int argc, char* argv[]){
 
  	cudaEventRecord( start, 0 );
 
+   	for (int i = 0; i < matDim; i++) {
+      		for (int j = 0; j < matDim; j++) {
+			float sum = 0.0;
+        		for (int k = 0; k < matDim; k++) {
+         			 sum = sum + MatA[i*matDim + k]*MatB[k*matDim+j];
+       			}
+ 
+       		 	MatC [i*matDim + j] = sum;
+     	 	}
 
+  	}
+
+	//end time
+	cudaEventRecord( end, 0 );
+  	cudaEventSynchronize( end );
 
 
 	//output results
 	/*for (int i = 0; i < matDim; i++){
 		for (int j = 0; j < matDim; j++){
-			std::cout << MatC[(i*matDim)+j] << " ";
+			printf ("%.2f	", MatC[(i*matDim)+j]); 
+			//std::cout << MatC[(i*matDim)+j] << " ";
 		}
 	std::cout << std::endl;
 	}*/
-
-
-	//end time
-	cudaEventRecord( end, 0 );
-  	cudaEventSynchronize( end );
 
  	float elapsedTime;
   	cudaEventElapsedTime( &elapsedTime, start, end );
