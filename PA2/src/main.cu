@@ -27,10 +27,10 @@ int main (int argc, char* argv[]){
  	cudaGetDeviceProperties( &prop, 0 );
 
 	// bounds checking
-	if ( matDim <=0 || matDim >= 32000){
+	/*if ( matDim <=0 || matDim >= 32000){
 		std::cout << "Matrix dimension not valid. Must be between 0 and 32000." << std::endl;
 		return 1;
-	}
+	}*/
 	if ( blockDim <=0 || blockDim >= 25000 ){
 		std::cout << "Block dimension not valid. Must be between 0 and 25000." << std::endl;
 		return 1;
@@ -39,14 +39,15 @@ int main (int argc, char* argv[]){
 		std::cout << "Thread dimension not valid. Must be between 0 and " << sqrt(prop.maxThreadsPerBlock)  << "." << std::endl;
 		return 1;
 	}
-	if ( blockDim * threadDim != matDim){
+	/*if ( blockDim * threadDim != matDim){
 		std::cout << "Not enough/too many blocks and threads for given matrix dimensions" << std::endl;
 		return 1;
-	}
+	}*/
 
 	// initalize more varaibles
 	dim3 grid (blockDim, blockDim);
-	dim3 block (threadDim, threadDim);
+
+	dim3 block (threadDim , threadDim );
 
 	//create arrays
 	float *MatA, *MatB, *MatC;
@@ -77,13 +78,13 @@ int main (int argc, char* argv[]){
   	cudaEventSynchronize( end );
 
 	//for testing output
-	/*for (int i = 0; i < matDim; i++){
+	for (int i = 0; i < matDim; i++){
 		for (int j = 0; j < matDim; j++){
 			printf ("%.2f \t", MatC[(i*matDim)+j]);
 			//std::cout << MatC[(i*matDim)+j] << "\t";
 		}
 		std::cout << std::endl;
-	}*/
+	}
 
  	float elapsedTime;
   	cudaEventElapsedTime( &elapsedTime, start, end );

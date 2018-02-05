@@ -3,17 +3,22 @@
 #include "multiply.h"
 
 __global__ void multiply (float *a, float *b, float *c, int size){
-	int globalPos = getGlobalIdx();
+	//int globalPos = getGlobalIdx();
 	int row = blockIdx.y*blockDim.y+threadIdx.y;
 	int col = blockIdx.x*blockDim.x+threadIdx.x;
 
 	//printf ("global: %d \n (%d, %d)\n\n", globalPos, row, col);
-	float temp = 0;
-	if (row < size && col < size) {    
-        	for (int i = 0; i < size; i++) {
-            		temp += a[row * size + i] * b[i * size + col];
-        	}
-    		c[row * size + col] = temp;
+	while (row < size) {
+		while (col < size){
+			float temp = 0;
+        		for (int i = 0; i < size; i++) {
+            			temp += a[row * size + i] * b[i * size + col];
+        		}
+    			c[row * size + col] = temp;
+			col+= blockDim.y * gridDim.y;
+		}
+		col = blockIdx.x*blockDim.x+threadIdx.x;
+		row += blockDim.x * gridDim.x;
 	} 
 }
 
