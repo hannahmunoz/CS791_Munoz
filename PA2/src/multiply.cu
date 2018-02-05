@@ -13,7 +13,7 @@ __global__ void multiply (float *a, float *b, float *c, int size){
         	for (int i = 0; i < size; i++) {
             		temp += a[row * size + i] * b[i * size + col];
         	}
-    	c[row * size + col] = temp;
+    		c[row * size + col] = temp;
 	} 
 }
 

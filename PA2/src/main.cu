@@ -39,10 +39,10 @@ int main (int argc, char* argv[]){
 		std::cout << "Thread dimension not valid. Must be between 0 and " << sqrt(prop.maxThreadsPerBlock)  << "." << std::endl;
 		return 1;
 	}
-	/*if ( blockDim * threadDim != matDim){
+	if ( blockDim * threadDim != matDim){
 		std::cout << "Not enough/too many blocks and threads for given matrix dimensions" << std::endl;
 		return 1;
-	}*/
+	}
 
 	// initalize more varaibles
 	dim3 grid (blockDim, blockDim);
@@ -68,28 +68,22 @@ int main (int argc, char* argv[]){
 
  	cudaEventRecord( start, 0 );
 
-	//send to GPU
-	//cudaMemcpy (a, MatA, (float)pow(matDim, 2) * sizeof(float), cudaMemcpyHostToDevice);
-	//cudaMemcpy (b, MatB, (float)pow(matDim, 2) * sizeof(float), cudaMemcpyHostToDevice);
 
 	//multiply
 	multiply <<<grid, block>>> (MatA, MatB, MatC, matDim);
-
-	// get result from GPU
-	//cudaMemcpy (MatC, c, (float)pow(matDim, 2) * sizeof(float), cudaMemcpyDeviceToHost );
 
 	//end time
 	cudaEventRecord( end, 0 );
   	cudaEventSynchronize( end );
 
 	//for testing output
-	for (int i = 0; i < matDim; i++){
+	/*for (int i = 0; i < matDim; i++){
 		for (int j = 0; j < matDim; j++){
 			printf ("%.2f \t", MatC[(i*matDim)+j]);
 			//std::cout << MatC[(i*matDim)+j] << "\t";
 		}
 		std::cout << std::endl;
-	}
+	}*/
 
  	float elapsedTime;
   	cudaEventElapsedTime( &elapsedTime, start, end );
