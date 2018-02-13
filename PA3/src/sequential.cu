@@ -11,6 +11,8 @@
 const int GLOBAL_CONST_ROW = 161;
 const int GLOBAL_CONST_COL = 128;
 
+void fileIn (std::string name, std::vector<float> &parsedCSV);
+
 int main (int argc, char* argv[]){
 	//variables
 	if (argc < 2){
@@ -20,37 +22,12 @@ int main (int argc, char* argv[]){
 	
 	srand(time(NULL));
 
-	std::vector <std::vector <float> > data;	
-
 	// read in file
-	std::ifstream file (argv[1]);
-	std::string s;
+
 	std::vector<float> parsedCSV;
 
-	// discard metadata on top
-	if (file.good()){
-		for (int i = 0; i < 9; i++){
-			getline (file, s);
-		}
-	
-		getline(file, s, ',');
-		int iter = 1;
-		while (getline(file, s, ',')) {
-			if ( iter % 129 == 1){
-				if ( rand() % 10 == 1){
-					parsedCSV.push_back(0.00);
+	fileIn (argv[1], parsedCSV);
 
-				}
-				else{
-					parsedCSV.push_back(atof (s.c_str()));
-				}
-			}
-			else{
-				parsedCSV.push_back(atof (s.c_str()));
-			}
-		}
-	}
-	file.close();
 
 	for (int i = 0; i < GLOBAL_CONST_ROW; i++){
 		for (int j = 0; j < GLOBAL_CONST_COL; j++){
@@ -83,5 +60,37 @@ int main (int argc, char* argv[]){
 
 
 	return 0;
+
+}
+
+void fileIn (std::string name, std::vector<float> &parsedCSV){
+	
+	std::ifstream file (name.c_str());
+	std::string s;
+
+	// discard metadata on top
+	if (file.good()){
+		for (int i = 0; i < 9; i++){
+			getline (file, s);
+		}
+	
+		getline(file, s, ',');
+		int iter = 1;
+		while (getline(file, s, ',')) {
+			if ( iter % 129 == 1){
+				if ( rand() % 10 == 1){
+					parsedCSV.push_back(0.00);
+
+				}
+				else{
+					parsedCSV.push_back(atof (s.c_str()));
+				}
+			}
+			else{
+				parsedCSV.push_back(atof (s.c_str()));
+			}
+		}
+	}
+	file.close();
 
 }
