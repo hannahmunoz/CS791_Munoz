@@ -6,12 +6,16 @@
 #include <fstream> 
 #include <vector>
 #include <time.h>
-
+#include <algorithm>
 
 const int GLOBAL_CONST_ROW = 161;
 const int GLOBAL_CONST_COL = 128;
 
 void fileIn (std::string name, std::vector<float> &parsedCSV);
+
+float kDistance(std::vector<float> parsedCSV, int row);
+
+void euclidean (std::vector<float> parsedCSV, std::vector<float> &distance, int row);
 
 int main (int argc, char* argv[]){
 	//variables
@@ -30,11 +34,20 @@ int main (int argc, char* argv[]){
 
 
 	for (int i = 0; i < GLOBAL_CONST_ROW; i++){
+		if (isnan(parsedCSV[i*(GLOBAL_CONST_COL)])){
+			std::vector<float> distance;
+			std::cout << "Row Number:		" << i << std::endl << "kth Nearest Neighbor: " << kDistance (parsedCSV, i) << std::endl << std::endl;
+		}
+	
+	}
+
+
+	/*for (int i = 0; i < GLOBAL_CONST_ROW; i++){
 		for (int j = 0; j < GLOBAL_CONST_COL; j++){
 			std::cout << parsedCSV[i*(GLOBAL_CONST_COL)+j] << " ";
 		}
 		std::cout << std::endl << std::endl;
-	}
+	}*/
 
 
 	// begin timing
@@ -42,9 +55,9 @@ int main (int argc, char* argv[]){
   	cudaEventCreate(&start);
   	cudaEventCreate(&end);
 
- 	cudaEventRecord( start, 0 );
+ 	cudaEventRecord(start, 0);
 	//end time
-	cudaEventRecord( end, 0 );
+	cudaEventRecord(end, 0);
   	cudaEventSynchronize( end );
 
 
@@ -77,20 +90,59 @@ void fileIn (std::string name, std::vector<float> &parsedCSV){
 		getline(file, s, ',');
 		int iter = 1;
 		while (getline(file, s, ',')) {
-			if ( iter % 129 == 1){
-				if ( rand() % 10 == 1){
-					parsedCSV.push_back(0.00);
+			if ( iter % 128 == 1 && rand() % 10 == 1){
+				parsedCSV.push_back(NAN);
 
-				}
-				else{
-					parsedCSV.push_back(atof (s.c_str()));
-				}
 			}
 			else{
 				parsedCSV.push_back(atof (s.c_str()));
 			}
+			iter++;
 		}
 	}
 	file.close();
+
+}
+
+float kDistance(std::vector<float> parsedCSV, int row){
+
+	std::vector<float> distance;
+
+	euclidean (parsedCSV, distance, row);
+
+	//sort the vector
+        std::stable_sort (distance.begin(), distance.end());
+
+	/*for (int i = 0; i < distance.size(); i++){
+		std::cout << distance [i] << " ";
+	}
+	std::cout << std::endl;*/
+
+	// k = 5
+	distance.resize (5);
+	float sum = 0.0;
+	for (int i = 0; i < distance.size(); i++){
+		sum += distance [i];
+	}
+	
+	//std::cout << row << ": " << sum/5 << " ";
+	
+	//std::cout << std::endl << std::endl;
+
+	return sum/5;
+}
+
+void euclidean (std::vector<float> parsedCSV, std::vector<float> &distance, int row){
+	for (int i = 0; i < GLOBAL_CONST_ROW; i++){
+		if ( i != row){
+			float runningSum = 0.0;
+			for (int j = 1; j < GLOBAL_CONST_COL; j++){
+				float temp = parsedCSV[row*(GLOBAL_CONST_COL)+j] - parsedCSV[i*(GLOBAL_CONST_COL)+j];
+				runningSum += pow (temp, 2);
+			}
+
+			distance.push_back (sqrt(runningSum));
+		}
+	}
 
 }
