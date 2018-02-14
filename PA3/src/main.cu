@@ -1,66 +1,68 @@
 #include <iostream>
 #include <stdio.h>
-
 #include <cmath>
+#include <time.h>
+#include <fstream> 
+#include <string>
+#include <utility>
 
-#include "multiply.h"
+#include "kthnearestneighbor.h"
 
-bool isSquare(int num){	return (floor (sqrt(num)) == sqrt(num));}
+const int GLOBAL_CONST_ROW = 161;
+const int GLOBAL_CONST_COL = 128;
+
+void fileIn (std::string name, float* parsedCSV);
 
 int main (int argc, char* argv[]){
-	
-	//variables
-	int matDim, blockDim, threadDim;
-
-	// get inputs
-	if (argc < 4){
-		std::cout << "Not enough arguments. <<matrix dimension>> << block dimension>> << thread dimension>>" << std::endl; 
-		return 1;
-	}
-	else{
-	       matDim = atoi (argv [1]);
-	       blockDim = atoi(argv [2]);
-	       threadDim = atoi(argv [3]);
-	}
 
 	cudaDeviceProp prop;
  	cudaGetDeviceProperties( &prop, 0 );
 
-	// bounds checking
-	/*if ( matDim <=0 || matDim >= 32000){
-		std::cout << "Matrix dimension not valid. Must be between 0 and 32000." << std::endl;
-		return 1;
-	}*/
-	if ( blockDim <=0 || blockDim >= 25000 ){
-		std::cout << "Block dimension not valid. Must be between 0 and 25000." << std::endl;
-		return 1;
-	}
-	if ( threadDim <=0 || threadDim > sqrt(prop.maxThreadsPerBlock) ){
-		std::cout << "Thread dimension not valid. Must be between 0 and " << sqrt(prop.maxThreadsPerBlock)  << "." << std::endl;
+	//variables
+	int blockDim, threadDim;
+
+	// get inputs
+	if (argc < 4){
+		std::cout << "Not enough arguments. <<filename>> << block dimension>> << thread dimension>>" << std::endl; 
 		return 1;
 	}
-	/*if ( blockDim * threadDim != matDim){
-		std::cout << "Not enough/too many blocks and threads for given matrix dimensions" << std::endl;
+	else{
+	       blockDim = atoi(argv [2]);
+	       threadDim = atoi(argv [3]);
+	}
+	if (blockDim*threadDim <  sqrt(GLOBAL_CONST_ROW)){
+		std::cout << "error: blocks and threads must cover the input file" << std::endl;
+		std::cout << "must equal " << (int)sqrt(GLOBAL_CONST_ROW) << std::endl;
 		return 1;
-	}*/
+	} 
+
+
+	srand(1);
 
 	// initalize more varaibles
 	dim3 grid (blockDim, blockDim);
 
 	dim3 block (threadDim , threadDim );
 
-	//create arrays
-	float *MatA, *MatB, *MatC;
+	//create vector
+	float* parsedCSV;
+	float* results;
 
 	//alloc memory
-	cudaMallocManaged( (void**)&MatA, (float)pow(matDim, 2) * sizeof(float) );
-	cudaMallocManaged( (void**)&MatB, (float)pow(matDim, 2) * sizeof(float) );
-	cudaMallocManaged( (void**)&MatC, (float)pow(matDim, 2) * sizeof(float) );
+	cudaMallocManaged( (void**)&parsedCSV, GLOBAL_CONST_ROW * GLOBAL_CONST_COL * sizeof(float) );
+	cudaMallocManaged( (void**)&results, GLOBAL_CONST_ROW * sizeof(float) );
 
-	for (int i=0; i < (int)pow(matDim, 2); i++) {
- 		MatA[i] = (float) i;
- 		MatB[i] = (float) i;
- 	}
+	fileIn (argv[1], parsedCSV);
+
+	/*for (int i = 0; i < GLOBAL_CONST_ROW; i++){
+		for (int j = 0; j < GLOBAL_CONST_COL; j++){
+			printf ("%.02f ",parsedCSV[i*(GLOBAL_CONST_COL)+j] );
+		}
+		printf ("\n");
+	}*/
+
+	std::vector<std::pair <int, float> > kresults;
+
 
 	// begin timing
  	cudaEvent_t start, end;
@@ -69,22 +71,24 @@ int main (int argc, char* argv[]){
 
  	cudaEventRecord( start, 0 );
 
-
-	//multiply
-	multiply <<<grid, block>>> (MatA, MatB, MatC, matDim);
+	for (int i = 0; i < GLOBAL_CONST_ROW; i++){
+		if (isnan(parsedCSV[i*(GLOBAL_CONST_COL)])){
+			kDistance <<<grid, block>>> (parsedCSV, i, results);
+			printf ("Row, %d,	k, %.02f\n", i, results[0]);
+		}
+	
+	}
 
 	//end time
 	cudaEventRecord( end, 0 );
   	cudaEventSynchronize( end );
 
-	//for testing output
-	for (int i = 0; i < matDim; i++){
-		for (int j = 0; j < matDim; j++){
-			printf ("%.2f \t", MatC[(i*matDim)+j]);
-			//std::cout << MatC[(i*matDim)+j] << "\t";
-		}
-		std::cout << std::endl;
+	for (int i = 0; i < kresults.size(); i++){
+		printf ("Row, %d,	k, %.02f\n", kresults[i].first, kresults[i].second);
+
 	}
+
+	//for testing output
 
  	float elapsedTime;
   	cudaEventElapsedTime( &elapsedTime, start, end );
@@ -95,7 +99,35 @@ int main (int argc, char* argv[]){
 	//dealloc memory
     	cudaEventDestroy( start );
         cudaEventDestroy( end );
-	cudaFree (MatA);
-	cudaFree (MatB);
-	cudaFree (MatC);
+	cudaFree (parsedCSV);
+	cudaFree (results);
+
+}
+
+void fileIn (std::string name, float* parsedCSV){
+	
+	std::ifstream file (name.c_str());
+	std::string s;
+
+	// discard metadata on top
+	if (file.good()){
+		for (int i = 0; i < 9; i++){
+			getline (file, s);
+		}
+	
+		getline(file, s, ',');
+		int iter = 1;
+		while (getline(file, s, ',')) {
+			if ( iter % 128 == 1 && rand() % 10 == 1){
+				parsedCSV[iter-1] = NAN;
+
+			}
+			else{
+				parsedCSV[iter-1] = atof (s.c_str());
+			}
+			iter++;
+		}
+	}
+	file.close();
+
 }

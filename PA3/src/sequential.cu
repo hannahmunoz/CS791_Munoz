@@ -7,6 +7,7 @@
 #include <vector>
 #include <time.h>
 #include <algorithm>
+#include <utility>
 
 const int GLOBAL_CONST_ROW = 161;
 const int GLOBAL_CONST_COL = 128;
@@ -24,7 +25,7 @@ int main (int argc, char* argv[]){
 		return 1;
 	}
 	
-	srand(time(NULL));
+	srand(1);
 
 	// read in file
 
@@ -32,13 +33,32 @@ int main (int argc, char* argv[]){
 
 	fileIn (argv[1], parsedCSV);
 
+	std::vector<std::pair <int, float> > results;
+
+	// begin timing
+ 	cudaEvent_t start, end;
+  	cudaEventCreate(&start);
+  	cudaEventCreate(&end);
+
+ 	cudaEventRecord(start, 0);
 
 	for (int i = 0; i < GLOBAL_CONST_ROW; i++){
 		if (isnan(parsedCSV[i*(GLOBAL_CONST_COL)])){
-			std::vector<float> distance;
-			std::cout << "Row Number:		" << i << std::endl << "kth Nearest Neighbor: " << kDistance (parsedCSV, i) << std::endl << std::endl;
+
+			results.push_back ( std::make_pair(i, kDistance (parsedCSV, i)));
 		}
 	
+	}
+
+
+	//end time
+	cudaEventRecord(end, 0);
+  	cudaEventSynchronize( end );
+
+
+	for (int i = 0; i < results.size(); i++){
+		printf ("Row, %d,	k, %.02f\n", results[i].first, results[i].second);
+
 	}
 
 
@@ -48,20 +68,6 @@ int main (int argc, char* argv[]){
 		}
 		std::cout << std::endl << std::endl;
 	}*/
-
-
-	// begin timing
- 	cudaEvent_t start, end;
-  	cudaEventCreate(&start);
-  	cudaEventCreate(&end);
-
- 	cudaEventRecord(start, 0);
-	//end time
-	cudaEventRecord(end, 0);
-  	cudaEventSynchronize( end );
-
-
-	
 
 	// read out file
 
@@ -138,7 +144,7 @@ void euclidean (std::vector<float> parsedCSV, std::vector<float> &distance, int 
 			float runningSum = 0.0;
 			for (int j = 1; j < GLOBAL_CONST_COL; j++){
 				float temp = parsedCSV[row*(GLOBAL_CONST_COL)+j] - parsedCSV[i*(GLOBAL_CONST_COL)+j];
-				runningSum += pow (temp, 2);
+				runningSum += temp * temp;
 			}
 
 			distance.push_back (sqrt(runningSum));
