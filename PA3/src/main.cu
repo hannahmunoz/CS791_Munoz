@@ -4,7 +4,6 @@
 #include <time.h>
 #include <fstream> 
 #include <string>
-#include <utility>
 
 #include "kthnearestneighbor.h"
 
@@ -47,10 +46,13 @@ int main (int argc, char* argv[]){
 	//create vector
 	float* parsedCSV;
 	float* results;
+	float* kresults;
 
 	//alloc memory
 	cudaMallocManaged( (void**)&parsedCSV, GLOBAL_CONST_ROW * GLOBAL_CONST_COL * sizeof(float) );
 	cudaMallocManaged( (void**)&results, GLOBAL_CONST_ROW * sizeof(float) );
+	cudaMallocManaged( (void**)&kresults, GLOBAL_CONST_ROW * sizeof(float) );
+
 
 	fileIn (argv[1], parsedCSV);
 
@@ -60,8 +62,6 @@ int main (int argc, char* argv[]){
 		}
 		printf ("\n");
 	}*/
-
-	std::vector<std::pair <int, float> > kresults;
 
 
 	// begin timing
@@ -73,8 +73,7 @@ int main (int argc, char* argv[]){
 
 	for (int i = 0; i < GLOBAL_CONST_ROW; i++){
 		if (isnan(parsedCSV[i*(GLOBAL_CONST_COL)])){
-			kDistance <<<grid, block>>> (parsedCSV, i, results);
-			printf ("Row, %d,	k, %.02f\n", i, results[0]);
+			kDistance <<<grid, block>>> (parsedCSV, i, results, kresults);
 		}
 	
 	}
@@ -83,9 +82,10 @@ int main (int argc, char* argv[]){
 	cudaEventRecord( end, 0 );
   	cudaEventSynchronize( end );
 
-	for (int i = 0; i < kresults.size(); i++){
-		printf ("Row, %d,	k, %.02f\n", kresults[i].first, kresults[i].second);
-
+	for (int i = 0; i < GLOBAL_CONST_ROW; i++){
+		if (kresults[i] != 0.00){
+			printf ("Row, %d,	k, %.02f\n", i, kresults[i]);
+		}
 	}
 
 	//for testing output
@@ -101,6 +101,7 @@ int main (int argc, char* argv[]){
         cudaEventDestroy( end );
 	cudaFree (parsedCSV);
 	cudaFree (results);
+	cudaFree (kresults);
 
 }
 
