@@ -7,6 +7,9 @@
 
 #include "kthnearestneighbor.h"
 
+using namespace std;
+
+
 const int GLOBAL_CONST_ROW = 161;
 const int GLOBAL_CONST_COL = 128;
 
@@ -22,35 +25,21 @@ __global__ void kDistance (float* parsedCSV, int row, float* results, float* kre
 			runningSum += temp * temp;	
 		}
 		results [idx] = sqrtf (runningSum);
-	}
 
-	__syncthreads();
+
+	}
 
 	//sort
 
 	if (idx == row){
-		for (int i = 0; i < GLOBAL_CONST_ROW; i++){
-			bubbleSort(results, GLOBAL_CONST_ROW);
-			//printf ("%.02f ", results [i]);
-		}
-		//printf ("\n\n");
+		bubbleSort(results, GLOBAL_CONST_ROW);
 
-		for (int i = 1; i < 5; i++){
-			results[0] += results[i];
+		for (int i = 0; i < 5; i++){
+			kresults[row] += results[i];
 		}
 		
-		kresults[row] = results[0]/5;
- 
-		//printf ("%.02f\n", results[0]); 
-	}
-
-	__syncthreads();
-	//int row = blockIdx.y*blockDim.y+threadIdx.y;
-	//int col = blockIdx.x*blockDim.x+threadIdx.x;
-	//printf ("%d %d \n", getGlobalIdx(), row);
-
-	
-
+		kresults[row] /= 5;
+ 	}
 }
 
 
@@ -73,8 +62,10 @@ __device__ void bubbleSort(float results[], int iter){
 		}
  	}
 
-    bubbleSort(results, iter-1);
+       bubbleSort(results, iter-1);
 }
+
+ 
 
 
 
