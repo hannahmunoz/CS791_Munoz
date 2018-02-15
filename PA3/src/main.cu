@@ -31,10 +31,17 @@ int main (int argc, char* argv[]){
 	}
 	if (blockDim*threadDim <  sqrt(GLOBAL_CONST_ROW)){
 		std::cout << "error: blocks and threads must cover the input file" << std::endl;
-		std::cout << "must equal " << (int)sqrt(GLOBAL_CONST_ROW) << std::endl;
+		std::cout << "must at least " << (int)sqrt(GLOBAL_CONST_ROW) << std::endl;
 		return 1;
 	} 
-
+	if ( blockDim <=0 || blockDim >= 25000 ){
+		std::cout << "Block dimension not valid. Must be between 0 and 25000." << std::endl;
+		return 1;
+	}
+	if ( threadDim <=0 || threadDim > sqrt(prop.maxThreadsPerBlock) ){
+		std::cout << "Thread dimension not valid. Must be between 0 and " << sqrt(prop.maxThreadsPerBlock)  << "." << std::endl;
+		return 1;
+	}
 
 	srand(1);
 

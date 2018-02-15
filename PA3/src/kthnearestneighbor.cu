@@ -7,16 +7,13 @@
 
 #include "kthnearestneighbor.h"
 
-using namespace std;
-
-
 const int GLOBAL_CONST_ROW = 161;
 const int GLOBAL_CONST_COL = 128;
 
 __global__ void kDistance (float* parsedCSV, int row, float* results, float* kresults ){
  	//float results [GLOBAL_CONST_COL];
 	int idx = getGlobalIdx();
-
+	if (idx < GLOBAL_CONST_ROW){
 	// get euclidean distance
 	if (idx != row){
 		int runningSum = 0.0;
@@ -40,6 +37,7 @@ __global__ void kDistance (float* parsedCSV, int row, float* results, float* kre
 		
 		kresults[row] /= 5;
  	}
+	}
 }
 
 
