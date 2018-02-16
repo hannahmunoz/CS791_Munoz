@@ -38,24 +38,14 @@ int main (int argc, char* argv[]){
 	fillMat (MatA, size);
 	fillMat (MatB, size);
 
-	/*cudaMallocManaged( (void**)&MatA, size * sizeof(float) );
-	cudaMallocManaged( (void**)&MatB, size * sizeof(float) );
-	cudaMallocManaged( (void**)&MatC, matDim * matDim * sizeof(float) );*/
-	
 	float *a, *b, *c;
-	for(int i=0; i < numGPU; i++) {
-    		cudaSetDevice(i);
-    		cudaMalloc( (void**)&a, matDim * matDim * sizeof(float) );
-    		cudaMalloc( (void**)&b, matDim * matDim * sizeof(float) );
-    		cudaMalloc( (void**)&c, matDim * matDim * sizeof(float) );
-	}
 
+    	cudaMalloc( (void**)&a, size * sizeof(float) );
+    	cudaMalloc( (void**)&b, size * sizeof(float) );
+    	cudaMalloc( (void**)&c, matDim * matDim * sizeof(float) );
 
-	for(int i = 0; i < numGPU; i++) {
-    		cudaSetDevice(i);
-    		cudaMemcpyAsync(a, &MatA[i*matDim * matDim], matDim * matDim * sizeof(float), cudaMemcpyHostToDevice);
-    		cudaMemcpyAsync(b, &MatB[i*matDim * matDim], matDim * matDim * sizeof(float), cudaMemcpyHostToDevice);
-	}
+    	cudaMemcpy(a, MatA, size * sizeof(float), cudaMemcpyHostToDevice);
+    	cudaMemcpy(b, MatB, size * sizeof(float), cudaMemcpyHostToDevice);
 
 
 	// begin timing
@@ -65,21 +55,18 @@ int main (int argc, char* argv[]){
 
  	cudaEventRecord( start, 0 );
 
-	for (int i = 0, j =0; i < matnum/2 && j< numGPU; i+=2,j++){
-		cudaSetDevice (j);
-		add <<<grid, block>>> (a, b, c, i*matDim*matDim);
-	}
-
-
-	for (int i = 1, j =0; i < matnum/2 && j< numGPU; i+=2,j++){
-		cudaSetDevice (j);
-		multiply <<<grid, block>>> (a, b, c, matDim, (i+1)*matDim*matDim);
-		
+	for (int i = 0; i < matnum/2; i ++){
+		if (i % 2 == 0){
+			add <<<grid, block>>> (a, b, c, i*matDim*matDim);
+		}
+		else{
+			multiply <<<grid, block>>> (a, b, c, matDim, i*matDim*matDim);
+		}
 	}
 
 	// get result from GPU
 	cudaMemcpy (MatC, c, matDim * matDim * sizeof(float) , cudaMemcpyDeviceToHost );
-
+	
 
 	//end time
 	cudaEventRecord( end, 0 );
