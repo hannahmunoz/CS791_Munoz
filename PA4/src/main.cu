@@ -1,9 +1,9 @@
 #include <iostream>
 #include <stdio.h>
-
 #include <cmath>
 
 #include "mat.h"
+
 
 bool isSquare(int num){	return (floor (sqrt(num)) == sqrt(num));}
 bool check (int argc, char* argv[]);
@@ -13,17 +13,18 @@ void printMat (float *mat, int matDim,  int offset);
 int main (int argc, char* argv[]){
 	
 	//variables
-	int matDim, matnum, blockDim, threadDim, size;
+	int numGPU, matDim, matnum, blockDim, threadDim, size;
 
 	if (check (argc, argv)){
 		return 1;
 	}
-
-	matDim = atoi (argv [1]);
-	matnum = atoi(argv [2]);
-	blockDim = atoi(argv [3]);
-	threadDim = atoi(argv [4]);
+	numGPU = atoi (argv [1]);
+	matDim = atoi (argv [2]);
+	matnum = atoi(argv [3]);
+	blockDim = atoi(argv [4]);
+	threadDim = atoi(argv [5]);
 	size = matDim * matDim * (matnum/2);
+
 
 	// initalize more varaibles
 	dim3 grid (blockDim, blockDim);
@@ -53,16 +54,37 @@ int main (int argc, char* argv[]){
   	cudaEventCreate(&end);
 
  	cudaEventRecord( start, 0 );
+	int i = 0;
+	int j = 0;
 
 	//add
-	for (int i = 0; i < matnum/2; i ++){
-		if (i % 2 ==0){
+	//for (int i = 0; i < matnum/2; i += numGPU){
+		//for (int j = 0; j < numGPU; j +=2){
+
+	#pragma omp parallel for
+	while (i < matnum/2 && j < numGPU){
+		cudaSetDevice (j);
+		if (i % 2 == 0){
 			add <<<grid, block>>> (MatA, MatB, MatC, i*matDim*matDim);
 		}
 		else{
 			multiply <<<grid, block>>> (MatA, MatB, MatC, matDim, i*matDim*matDim);
-		} 
+		}		
+	 	i++;
+		j++;
+		if ( j == numGPU){
+			j = 0;
+		}
 	}
+
+	/*for (int i = 0; i < matnum/2; i ++){
+		if (i % 2 == 0){
+			add <<<grid, block>>> (MatA, MatB, MatC, i*matDim*matDim);
+		}
+		else{
+			multiply <<<grid, block>>> (MatA, MatB, MatC, matDim, i*matDim*matDim);
+		}
+	}*/
 	
 
 	//end time
@@ -89,28 +111,35 @@ bool check (int argc,char* argv[]){
 
 	cudaDeviceProp prop;
  	cudaGetDeviceProperties( &prop, 0 );
+	int numGPU; 
+	cudaGetDeviceCount(&numGPU);
 
-	if (argc < 5){
-		std::cout << "Not enough arguments. <<matrix dimension>> <<number of matrices>> << block dimension>> << thread dimension>>" << std::endl; 
+	if (argc < 6){
+		std::cout << "Not enough arguments. <<number of GPU>> <<matrix dimension>> <<number of matrices>> << block dimension>> << thread dimension>>" << std::endl; 
 		return true;
 	}
-	if (atoi (argv [1]) <=0 || atoi (argv [1]) >= 32000){
+	if (atoi (argv [1]) <=0 || atoi (argv [1]) >= numGPU){
+		std::cout << "Must have between 1 and " << numGPU << " GPUs" << std::endl;
+		return true;
+	}
+
+	if (atoi (argv [2]) <=0 || atoi (argv [2]) >= 32000){
 		std::cout << "Matrix dimension not valid. Must be between 0 and 32000." << std::endl;
 		return true;
 	}
-	if (atoi (argv [2]) % 2 != 0){
+	if (atoi (argv [3]) % 2 != 0){
 		std::cout << "Even number of matrices needed" << std::endl;
 		return true;
 	}
-	if ( atoi(argv [3]) <=0 || atoi(argv [3]) >= 25000 ){
+	if ( atoi(argv [4]) <=0 || atoi(argv [4]) >= 25000 ){
 		std::cout << "Block dimension not valid. Must be between 0 and 25000." << std::endl;
 		return true;
 	}
-	if ( atoi(argv [4]) <=0 || atoi(argv [4]) > sqrt(prop.maxThreadsPerBlock) ){
+	if ( atoi(argv [5]) <=0 || atoi(argv [5]) > sqrt(prop.maxThreadsPerBlock) ){
 		std::cout << "Thread dimension not valid. Must be between 0 and " << sqrt(prop.maxThreadsPerBlock)  << "." << std::endl;
 		return true;
 	}
-	if ( atoi(argv [3])  * atoi(argv [4]) != atoi(argv [1])){
+	if ( atoi(argv [4])  * atoi(argv [5]) != atoi(argv [2])){
 		std::cout << "Not enough/too many blocks and threads for given matrix dimensions" << std::endl;
 		return true;
 	}
