@@ -6,63 +6,46 @@
 #include "mat.h"
 
 bool isSquare(int num){	return (floor (sqrt(num)) == sqrt(num));}
+bool check (int argc, char* argv[]);
+void fillMat (float *mat, int size);
+void printMat (float *mat, int matDim,  int offset);
 
 int main (int argc, char* argv[]){
 	
 	//variables
-	int matDim, blockDim, threadDim;
+	int matDim, matnum, blockDim, threadDim, size;
 
-	// get inputs
-	if (argc < 4){
-		std::cout << "Not enough arguments. <<matrix dimension>> << block dimension>> << thread dimension>>" << std::endl; 
+	if (check (argc, argv)){
 		return 1;
-	}
-	else{
-	       matDim = atoi (argv [1]);
-	       blockDim = atoi(argv [2]);
-	       threadDim = atoi(argv [3]);
 	}
 
-	cudaDeviceProp prop;
- 	cudaGetDeviceProperties( &prop, 0 );
-
-	// bounds checking
-	if ( matDim <=0 || matDim >= 32000){
-		std::cout << "Matrix dimension not valid. Must be between 0 and 32000." << std::endl;
-		return 1;
-	}
-	if ( blockDim <=0 || blockDim >= 25000 ){
-		std::cout << "Block dimension not valid. Must be between 0 and 25000." << std::endl;
-		return 1;
-	}
-	if ( threadDim <=0 || threadDim > sqrt(prop.maxThreadsPerBlock) ){
-		std::cout << "Thread dimension not valid. Must be between 0 and " << sqrt(prop.maxThreadsPerBlock)  << "." << std::endl;
-		return 1;
-	}
-	if ( blockDim * threadDim != matDim){
-		std::cout << "Not enough/too many blocks and threads for given matrix dimensions" << std::endl;
-		return 1;
-	}
+	matDim = atoi (argv [1]);
+	matnum = atoi(argv [2]);
+	blockDim = atoi(argv [3]);
+	threadDim = atoi(argv [4]);
+	size = matDim * matDim * (matnum/2);
 
 	// initalize more varaibles
 	dim3 grid (blockDim, blockDim);
 	dim3 block (threadDim, threadDim);
 
 	//create arrays
-	float *MatA = new float [(int)pow(matDim, 2)];
-	float *MatB = new float [(int)pow(matDim, 2)]; 
-	float *MatC = new float [(int)pow(matDim, 2)];
+	float *MatA = new float [size];
+	float *MatB = new float [size]; 
+	float *MatC = new float [matDim * matDim];
 
-	for (int i=0; i < (int)pow(matDim, 2); i++) {
- 		MatA[i] = i;
- 		MatB[i] = i;
- 	}
+	cudaMallocManaged( (void**)&MatA, size * sizeof(float) );
+	cudaMallocManaged( (void**)&MatB, size * sizeof(float) );
+	cudaMallocManaged( (void**)&MatC, matDim * matDim * sizeof(float) );
 
-	//alloc memory
-	float *a, *b, *c;
-	cudaMalloc( (void**)&a,(float)pow(matDim, 2) * sizeof(float) );
-	cudaMalloc( (void**)&b, (float)pow(matDim, 2) * sizeof(float) );
-	cudaMalloc( (void**)&c, (float)pow(matDim, 2) * sizeof(float) );
+	fillMat (MatA, size);
+	fillMat (MatB, size);
+
+	/*for (int i = 0; i < matnum/2; i ++){
+		printMat (MatA, matDim, i*matDim*matDim);
+	}*/
+
+
 
 	// begin timing
  	cudaEvent_t start, end;
@@ -71,44 +54,84 @@ int main (int argc, char* argv[]){
 
  	cudaEventRecord( start, 0 );
 
-	//send to GPU
-	cudaMemcpy (a, MatA, (float)pow(matDim, 2) * sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy (b, MatB, (float)pow(matDim, 2) * sizeof(float), cudaMemcpyHostToDevice);
-
 	//add
-	add <<<grid, block>>> (a, b, c);
-
-	// get result from GPU
-	cudaMemcpy (MatC, c, (float)pow(matDim, 2) * sizeof(float), cudaMemcpyDeviceToHost );
+	for (int i = 0; i < matnum/2; i ++){
+		if (i % 2 ==0){
+			add <<<grid, block>>> (MatA, MatB, MatC, i*matDim*matDim);
+		}
+		else{
+			multiply <<<grid, block>>> (MatA, MatB, MatC, matDim, i*matDim*matDim);
+		} 
+	}
+	
 
 	//end time
 	cudaEventRecord( end, 0 );
   	cudaEventSynchronize( end );
+	
+	printMat (MatC, matDim, 0);
 
-	//for testing output
-	/*for (int i = 0; i < matDim; i++){
-		for (int j = 0; j < matDim; j++){
-			std::cout << MatC[(i*matDim)+j] << " ";
-		}
-		std::cout << std::endl;
-	}*/
 
  	float elapsedTime;
   	cudaEventElapsedTime( &elapsedTime, start, end );
 
         std::cout << "Time: " << elapsedTime << " ms." << std::endl;
 
-
 	//dealloc memory
     	cudaEventDestroy( start );
         cudaEventDestroy( end );
-	cudaFree (a);
-	cudaFree (b);
-	cudaFree (c);
-	delete MatA;
-	MatA = NULL;
-	delete MatB;
-	MatB = NULL;
-	delete MatC;
-	MatC = NULL;
+	cudaFree (MatA);
+	cudaFree (MatB);
+	cudaFree (MatC);
+}
+
+bool check (int argc,char* argv[]){
+
+	cudaDeviceProp prop;
+ 	cudaGetDeviceProperties( &prop, 0 );
+
+	if (argc < 5){
+		std::cout << "Not enough arguments. <<matrix dimension>> <<number of matrices>> << block dimension>> << thread dimension>>" << std::endl; 
+		return true;
+	}
+	if (atoi (argv [1]) <=0 || atoi (argv [1]) >= 32000){
+		std::cout << "Matrix dimension not valid. Must be between 0 and 32000." << std::endl;
+		return true;
+	}
+	if (atoi (argv [2]) % 2 != 0){
+		std::cout << "Even number of matrices needed" << std::endl;
+		return true;
+	}
+	if ( atoi(argv [3]) <=0 || atoi(argv [3]) >= 25000 ){
+		std::cout << "Block dimension not valid. Must be between 0 and 25000." << std::endl;
+		return true;
+	}
+	if ( atoi(argv [4]) <=0 || atoi(argv [4]) > sqrt(prop.maxThreadsPerBlock) ){
+		std::cout << "Thread dimension not valid. Must be between 0 and " << sqrt(prop.maxThreadsPerBlock)  << "." << std::endl;
+		return true;
+	}
+	if ( atoi(argv [3])  * atoi(argv [4]) != atoi(argv [1])){
+		std::cout << "Not enough/too many blocks and threads for given matrix dimensions" << std::endl;
+		return true;
+	}
+
+	return false;
+}
+
+void fillMat (float *mat, int size){
+	for (int i=0; i < size; i++) {
+		mat [i] = (float)(rand()) /(RAND_MAX/100);
+ 	}
+}
+
+void printMat (float *mat, int matDim, int offset){
+
+	for (int i = 0; i < matDim; i++){
+		for (int j = 0; j < matDim; j++){
+			printf ("%.02f	", mat[(i*matDim)+j + offset]); 
+		}
+		printf ("\n");
+	}
+	printf ("\n");
+
 }
