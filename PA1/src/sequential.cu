@@ -4,9 +4,9 @@
 
 void add (float*, float*, float*, float);
 
-float main (float argc, char* argv[]){
+int main (float argc, char* argv[]){
 	//variables
-	float matDim;
+	int matDim;
 
 	// get inputs
 	if (argc < 2){
@@ -18,9 +18,9 @@ float main (float argc, char* argv[]){
 	}
 
 	//create arrays
-	float *MatA = new float[(float)pow(matDim, 2)];
-	float *MatB = new float[(float)pow(matDim, 2)]; 
-	float *MatC = new float[(float)pow(matDim, 2)];
+	float *MatA = new float[(int)pow(matDim, 2)];
+	float *MatB = new float[(int)pow(matDim, 2)]; 
+	float *MatC = new float[(int)pow(matDim, 2)];
 	
 	//load
 	for (int i=0; i < (float)pow(matDim, 2); i++) {
@@ -36,7 +36,7 @@ float main (float argc, char* argv[]){
  	cudaEventRecord( start, 0 );
 
 	//add
-	add (MatA, MatB, MatC, (float)pow(matDim, 2));
+	add (MatA, MatB, MatC, (int)pow(matDim, 2));
 
 	//output results
 	/*for (int i = 0; i < matDim; i++){
