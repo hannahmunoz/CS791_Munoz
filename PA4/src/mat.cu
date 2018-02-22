@@ -8,8 +8,8 @@ __global__ void add (float *a, float *b, float *c, int offset){
 }
 
 __global__ void multiply (float *a, float *b, float *c, int size, int offset){
-	int row = blockIdx.y*blockDim.y+threadIdx.y;
-	int col = blockIdx.x*blockDim.x+threadIdx.x;
+	int row = blockIdx.y*blockDim.y+threadIdx.y ;
+	int col = blockIdx.x*blockDim.x+threadIdx.x ;
 
 	while (row < size) {
 		while (col < size){
@@ -18,6 +18,7 @@ __global__ void multiply (float *a, float *b, float *c, int size, int offset){
             			temp += a[row * size + i+offset] * b[i * size + col+offset];
         		}
     			c[row * size + col] += temp;
+			//printf ("%.02f, %.02f\n", temp, c[row * size + col]);
 			col+= blockDim.y * gridDim.y;
 		}
 		col = blockIdx.x*blockDim.x+threadIdx.x;

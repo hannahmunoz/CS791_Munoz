@@ -96,9 +96,10 @@ void fillMat (std::vector <std::vector <std::vector <float> > >  &mat, int matDi
 }
 
 void printMat (std::vector <std::vector <float> > mat){
+	
 	for (int i=0; i < mat.size(); i++) {
 		for (int j = 0; j < mat[i].size(); j++){
-			printf ("%.02f	", mat[i][j]);
+			printf ("%.02f %*c", mat[i][j], 5, ' ');
 		}
 		printf ("\n");
  	}

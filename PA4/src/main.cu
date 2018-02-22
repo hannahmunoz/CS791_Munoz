@@ -3,12 +3,27 @@
 #include <cmath>
 
 #include "mat.h"
+#include "book.h"
 
+
+struct DataStruct
+{
+	int deviceID;
+	int blocks; 
+	int threads;
+	int matDim;
+	int offset;
+	float *MatA; 
+	float *MatB; 
+	float *MatC; 
+};
 
 bool isSquare(int num){	return (floor (sqrt(num)) == sqrt(num));}
 bool check (int argc, char* argv[]);
 void fillMat (float *mat, int size);
 void printMat (float *mat, int matDim,  int offset);
+void* addroutine (void *tData);
+void* multroutine (void *tData);
 
 int main (int argc, char* argv[]){
 	
@@ -25,36 +40,40 @@ int main (int argc, char* argv[]){
 	threadDim = atoi(argv [5]);
 	size = matDim * matDim * (matnum/2);
 
-
 	// initalize more varaibles
-	dim3 grid (blockDim, blockDim);
-	dim3 block (threadDim, threadDim);
+	//dim3 grid (blockDim, blockDim);
+	//dim3 block (threadDim, threadDim);
 
-	//create arrays
-	float *MatA = new float [size];
-	float *MatB = new float [size]; 
-	float *MatC = new float [matDim * matDim];
+	float *MatA;
+	float *MatB;
+	float *MatC;
+
+
+	cudaMallocManaged( (void**)&MatA, size * sizeof(float) );
+	cudaMallocManaged( (void**)&MatB, size * sizeof(float) );
+	cudaMallocManaged( (void**)&MatC, matDim * matDim * sizeof(float) );
 
 	fillMat (MatA, size);
 	fillMat (MatB, size);
 
-	/*cudaMallocManaged( (void**)&MatA, size * sizeof(float) );
-	cudaMallocManaged( (void**)&MatB, size * sizeof(float) );
-	cudaMallocManaged( (void**)&MatC, matDim * matDim * sizeof(float) );*/
-	
-	float *a, *b, *c;
-	for(int i=0; i < numGPU; i++) {
-    		cudaSetDevice(i);
-    		cudaMalloc( (void**)&a, matDim * matDim * sizeof(float) );
-    		cudaMalloc( (void**)&b, matDim * matDim * sizeof(float) );
-    		cudaMalloc( (void**)&c, matDim * matDim * sizeof(float) );
-	}
+
+	DataStruct* threadData= new DataStruct[matnum/2];
+	CUTThread * thread = new CUTThread[matnum/2];
 
 
-	for(int i = 0; i < numGPU; i++) {
-    		cudaSetDevice(i);
-    		cudaMemcpyAsync(a, &MatA[i*matDim * matDim], matDim * matDim * sizeof(float), cudaMemcpyHostToDevice);
-    		cudaMemcpyAsync(b, &MatB[i*matDim * matDim], matDim * matDim * sizeof(float), cudaMemcpyHostToDevice);
+	//for (int i = 0; i < numGPU; i+=2){
+	for (int i = 0, j = 0; i < matnum/2 && j < numGPU; i++,j++){
+		threadData[i].deviceID = j;
+		threadData[i].blocks = blockDim; 
+		threadData[i].threads = threadDim; 
+		threadData[i].matDim = matDim;
+		threadData[i].offset = i* matDim *matDim;
+		threadData[i].MatA = MatA;
+		threadData[i].MatB = MatB;
+		threadData[i].MatC = MatC;
+		if (j+1 == numGPU){
+			j = 0;
+		}
 	}
 
 
@@ -65,20 +84,27 @@ int main (int argc, char* argv[]){
 
  	cudaEventRecord( start, 0 );
 
-	for (int i = 0, j =0; i < matnum/2 && j< numGPU; i+=2,j++){
-		cudaSetDevice (j);
-		add <<<grid, block>>> (a, b, c, i*matDim*matDim);
+	
+	for (int i = 0, j = 0; i < matnum/2 && j < numGPU; i++,j++){
+
+		if ( i%2 == 0){
+			thread[i] = start_thread(addroutine, &threadData[i]);
+		}
+		else{
+			thread[i] = start_thread(multroutine, &threadData[i]);
+		}
+		if (j+1 == numGPU){
+			wait_for_threads (thread, numGPU);
+	  	 	cudaDeviceSynchronize();
+			j = 0;
+		}
+		else if (i+1 == matnum/2){
+			wait_for_threads (thread, i);
+	  	 	cudaDeviceSynchronize();
+
+		}
 	}
 
-
-	for (int i = 1, j =0; i < matnum/2 && j< numGPU; i+=2,j++){
-		cudaSetDevice (j);
-		multiply <<<grid, block>>> (a, b, c, matDim, (i+1)*matDim*matDim);
-		
-	}
-
-	// get result from GPU
-	cudaMemcpy (MatC, c, matDim * matDim * sizeof(float) , cudaMemcpyDeviceToHost );
 
 
 	//end time
@@ -96,15 +122,9 @@ int main (int argc, char* argv[]){
 	//dealloc memory
     	cudaEventDestroy( start );
         cudaEventDestroy( end );
-	cudaFree (a);
-	cudaFree (b);
-	cudaFree (c);
-	delete MatA;
-	MatA = NULL;
-	delete MatB;
-	MatB = NULL;
-	delete MatC;
-	MatC = NULL;
+	cudaFree (MatA);
+	cudaFree (MatB);
+	cudaFree (MatC);
 }
 
 bool check (int argc,char* argv[]){
@@ -118,10 +138,10 @@ bool check (int argc,char* argv[]){
 		std::cout << "Not enough arguments. <<number of GPU>> <<matrix dimension>> <<number of matrices>> << block dimension>> << thread dimension>>" << std::endl; 
 		return true;
 	}
-	if (atoi (argv [1]) <=0 || atoi (argv [1]) >= numGPU){
+	/*if (atoi (argv [1]) <=0 || atoi (argv [1]) >= numGPU){
 		std::cout << "Must have between 1 and " << numGPU << " GPUs" << std::endl;
 		return true;
-	}
+	}*/
 
 	if (atoi (argv [2]) <=0 || atoi (argv [2]) >= 32000){
 		std::cout << "Matrix dimension not valid. Must be between 0 and 32000." << std::endl;
@@ -154,7 +174,7 @@ void fillMat (float *mat, int size){
 }
 
 void printMat (float *mat, int matDim, int offset){
-
+	printf ("\n");
 	for (int i = 0; i < matDim; i++){
 		for (int j = 0; j < matDim; j++){
 			printf ("%.02f	", mat[(i*matDim)+j + offset]); 
@@ -164,3 +184,30 @@ void printMat (float *mat, int matDim, int offset){
 	printf ("\n");
 
 }
+
+void* addroutine (void *tData){
+	DataStruct *data = (DataStruct*)tData;
+
+	//create arrays
+	dim3 grid (data->blocks, data->blocks);
+	dim3 block (data->threads, data->threads);
+
+	cudaSetDevice(data->deviceID);
+
+	add <<<grid, block>>> (data->MatA, data->MatB, data->MatC, data->offset);
+	return 0;
+
+}
+
+void* multroutine (void *tData){
+	DataStruct *data = (DataStruct*)tData;
+
+	dim3 grid (data->blocks, data->blocks);
+	dim3 block (data->threads, data->threads);
+
+	cudaSetDevice(data->deviceID);
+	multiply <<<grid, block>>> (data->MatA, data->MatB, data->MatC, data->matDim*data->matDim, data->offset);
+	return 0;
+
+}
+
