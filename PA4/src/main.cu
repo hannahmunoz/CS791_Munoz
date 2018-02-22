@@ -15,7 +15,8 @@ struct DataStruct
 	int offset;
 	float *MatA; 
 	float *MatB; 
-	float *MatC; 
+	float *MatC;
+	float returnValue; 
 };
 
 bool isSquare(int num){	return (floor (sqrt(num)) == sqrt(num));}
@@ -85,7 +86,7 @@ int main (int argc, char* argv[]){
  	cudaEventRecord( start, 0 );
 
 	
-	for (int i = 0, j = 0; i < matnum/2 && j < numGPU; i++,j++){
+	for (int i = 0, j = 0; i < matnum/2 && j < numGPU; i++){
 
 		if ( i%2 == 0){
 			thread[i] = start_thread(addroutine, &threadData[i]);
@@ -93,18 +94,15 @@ int main (int argc, char* argv[]){
 		else{
 			thread[i] = start_thread(multroutine, &threadData[i]);
 		}
-		if (j+1 == numGPU){
-			wait_for_threads (thread, numGPU);
-	  	 	cudaDeviceSynchronize();
+
+		j++;
+		if (j == numGPU){
 			j = 0;
 		}
-		else if (i+1 == matnum/2){
-			wait_for_threads (thread, i);
-	  	 	cudaDeviceSynchronize();
 
-		}
 	}
-
+	
+	wait_for_threads (thread,  matnum/2);
 
 
 	//end time
@@ -138,8 +136,8 @@ bool check (int argc,char* argv[]){
 		std::cout << "Not enough arguments. <<number of GPU>> <<matrix dimension>> <<number of matrices>> << block dimension>> << thread dimension>>" << std::endl; 
 		return true;
 	}
-	/*if (atoi (argv [1]) <=0 || atoi (argv [1]) >= numGPU){
-		std::cout << "Must have between 1 and " << numGPU << " GPUs" << std::endl;
+	/*if (atoi (argv [1]) <=1 || atoi (argv [1]) >= numGPU){
+		std::cout << "Must have between 2 and " << numGPU << " GPUs" << std::endl;
 		return true;
 	}*/
 
@@ -187,14 +185,31 @@ void printMat (float *mat, int matDim, int offset){
 
 void* addroutine (void *tData){
 	DataStruct *data = (DataStruct*)tData;
+	cudaSetDevice(data->deviceID);
 
 	//create arrays
 	dim3 grid (data->blocks, data->blocks);
 	dim3 block (data->threads, data->threads);
+	
+	float *C =  (float*)malloc(  data->matDim*data->matDim*sizeof(float) );
 
-	cudaSetDevice(data->deviceID);
+	float *partC;
+	cudaMalloc( (void**)&partC, data->matDim*data->matDim*sizeof(float) );
+	cudaMemcpy( partC, C, data->matDim*data->matDim*sizeof(float), cudaMemcpyHostToDevice );
 
-	add <<<grid, block>>> (data->MatA, data->MatB, data->MatC, data->offset);
+
+	add <<<grid, block>>> (data->MatA, data->MatB, partC, data->offset);
+
+	cudaMemcpy( C, partC, data->matDim*data->matDim*sizeof(float), cudaMemcpyDeviceToHost );
+
+	for (int i=0; i< data->matDim*data->matDim; i++) {
+        	data->MatC[i] += C[i];
+    	}
+
+	cudaFree( partC);
+	free (C);
+ 
+	
 	return 0;
 
 }
@@ -202,11 +217,30 @@ void* addroutine (void *tData){
 void* multroutine (void *tData){
 	DataStruct *data = (DataStruct*)tData;
 
+	cudaSetDevice(data->deviceID);
+
 	dim3 grid (data->blocks, data->blocks);
 	dim3 block (data->threads, data->threads);
 
-	cudaSetDevice(data->deviceID);
-	multiply <<<grid, block>>> (data->MatA, data->MatB, data->MatC, data->matDim*data->matDim, data->offset);
+	
+	float *C =  (float*)malloc(  data->matDim*data->matDim*sizeof(float) );
+
+	float *partC;
+	cudaMalloc( (void**)&partC, data->matDim*data->matDim*sizeof(float) );
+	cudaMemcpy( partC, C, data->matDim*data->matDim*sizeof(float), cudaMemcpyHostToDevice );
+
+	multiply <<<grid, block>>> (data->MatA, data->MatB, partC, data->matDim, data->offset);
+
+	cudaMemcpy( C, partC, data->matDim*data->matDim*sizeof(float), cudaMemcpyDeviceToHost );
+
+	for (int i=0; i< data->matDim*data->matDim; i++) {
+        	data->MatC[i] += C[i];
+    	}
+
+	cudaFree( partC);
+	free (C);
+ 
+
 	return 0;
 
 }

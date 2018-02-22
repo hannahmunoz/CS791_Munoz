@@ -64,7 +64,6 @@ int main (int argc, char* argv[]){
 		}
 	}
 
-
 	//end time
 	cudaEventRecord( end, 0 );
   	cudaEventSynchronize( end );
@@ -99,7 +98,7 @@ void printMat (std::vector <std::vector <float> > mat){
 	
 	for (int i=0; i < mat.size(); i++) {
 		for (int j = 0; j < mat[i].size(); j++){
-			printf ("%.02f %*c", mat[i][j], 5, ' ');
+			printf ("%.02f	", mat[i][j]);
 		}
 		printf ("\n");
  	}
@@ -118,12 +117,10 @@ void add (std::vector <std::vector <float> >  a, std::vector <std::vector <float
 void mult (std::vector <std::vector <float> >  a, std::vector <std::vector <float> > b, std::vector <std::vector <float> > &c){
    	for (int i = 0; i < a.size(); i++) {
       		for (int j = 0; j < a.size(); j++) {
-			float sum = 0.0;
         		for (int k = 0; k < a.size(); k++) {
-         			 sum += a[i][k] * b[k][j];
+         			 c[i][j] += a[i][k] * b[k][j];
        			}
  
-       		 	c[i][j] += sum;
      	 	}
   	}
 
