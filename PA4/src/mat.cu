@@ -10,11 +10,9 @@ __global__ void add (float *a, float *b, float *c, int offset){
 __global__ void multiply (float *a, float *b, float *c, int size, int offset){
 	int row = blockIdx.y*blockDim.y+threadIdx.y;
 	int col = blockIdx.x*blockDim.x+threadIdx.x;
-
         for (int k = 0; k < size; k++) {
             	c[row * size + col] += a[(row * size) + k+offset] * b[(k * size) + col+offset];
-        }
-
+       	 }
 }
 
 

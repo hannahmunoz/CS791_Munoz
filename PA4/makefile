@@ -4,14 +4,14 @@ INCLUDES=-I../include
 O_FILES=main.o mat.o 
 SEQ_FILES=sequential.o
 
-#all: $(O_FILES)
-#	$(CC) -o PA4 $(O_FILES)
+all: $(O_FILES)
+	$(CC) -o PA4 $(O_FILES)
 
-#main.o: ../src/main.cu
-#	$(CC) -c ../src/main.cu -o main.o $(INCLUDES)
+main.o: ../src/main.cu
+	$(CC) -c ../src/main.cu -o main.o $(INCLUDES)
 
-#mat.o: ../src/mat.cu
-#	$(CC) -c ../src/mat.cu -o mat.o $(INCLUDES)
+mat.o: ../src/mat.cu
+	$(CC) -c ../src/mat.cu -o mat.o $(INCLUDES)
 
 sequential.o: ../src/sequential.cu
 	$(CC) -c ../src/sequential.cu -o sequential.o $(INCLUDES)
