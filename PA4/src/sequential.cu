@@ -69,12 +69,12 @@ int main (int argc, char* argv[]){
   	cudaEventSynchronize( end );
 
 	//print results
-	printMat (MatC);
+	//printMat (MatC);
 
  	float elapsedTime;
   	cudaEventElapsedTime( &elapsedTime, start, end );
 
-        std::cout << "Time: " << elapsedTime << " ms." << std::endl;
+        std::cout << matDim << "," << matNumber <<"," << elapsedTime << std::endl;
 
 	return 0;
 }

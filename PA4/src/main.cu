@@ -43,10 +43,6 @@ int main (int argc, char* argv[]){
 	int numGPU; 
 	cudaGetDeviceCount(&numGPU);
 
-	// initalize more varaibles
-	//dim3 grid (blockDim, blockDim);
-	//dim3 block (threadDim, threadDim);
-
 	float *MatA;
 	float *MatB;
 	float *MatC;
@@ -61,10 +57,8 @@ int main (int argc, char* argv[]){
 
 
 	DataStruct* threadData= new DataStruct[matnum/2];
-	CUTThread * thread = new CUTThread[numGPU];
+	CUTThread * thread = new CUTThread[matnum/2];
 
-
-	//for (int i = 0; i < numGPU; i+=2){
 	for (int i = 0, j = 0; i < matnum/2 && j < numGPU; i++,j++){
 		threadData[i].deviceID = j;
 		threadData[i].blocks = blockDim; 
@@ -74,6 +68,9 @@ int main (int argc, char* argv[]){
 		threadData[i].MatA = MatA;
 		threadData[i].MatB = MatB;
 		threadData[i].MatC = MatC;
+		if (j+1 == numGPU){
+			j = 0;
+		}
 	}
 
 
@@ -85,18 +82,13 @@ int main (int argc, char* argv[]){
  	cudaEventRecord( start, 0 );
 
 	
-	for (int i = 0, j = 0; i < matnum/2 && j < numGPU; i++){
+	for (int i = 0; i < matnum/2; i++){
 
 		if ( i%2 == 0){
 			thread[i] = start_thread(addroutine, &threadData[i]);
 		}
 		else{
 			thread[i] = start_thread(multroutine, &threadData[i]);
-		}
-
-		j++;
-		if (j == numGPU){
-			j = 0;
 		}
 
 	}
